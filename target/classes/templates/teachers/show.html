@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Show teachers</title>
+</head>
+<body>
+<h2>Show teachers</h2>
+
+<table>
+  <tr>
+    <th>Techer Id-----</th>
+    <th>First name-----</th>
+    <th>Last name-----</th>
+    <th>Subject-----</th>
+    <th>Class</th>
+  </tr>
+
+  <tr th:each="teacher : ${teachers}">
+    <td th:text="${teacher.id}"></td>
+    <td th:text="${teacher.firstName}"></td>
+    <td th:text="${teacher.lastName}"></td>
+    <td th:text="${teacher.subject}"></td>
+    <td th:text="${teacher.classes}"></td>
+  </tr>
+</table>
+
+</body>
+</html>
