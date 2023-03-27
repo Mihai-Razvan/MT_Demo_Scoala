@@ -25,7 +25,6 @@ public class RestStudentsController {
 
     private final StudentsRepository studentsRepository;
     private final ClassesRepository classesRepository;
-
     private final JsonTransform jsonTransform;
 
     public RestStudentsController(StudentsRepository studentsRepository, ClassesRepository classesRepository, JsonTransform jsonTransform) {
@@ -64,7 +63,7 @@ public class RestStudentsController {
     }
 
     @PatchMapping("/move")
-    public String moveStudent(@RequestBody Map<String, String> body) {   //adds a student to the given new class and returns all the students in that new class
+    public String moveStudent(@RequestBody Map<String, String> body) {   //move a student from a class to the given new class and returns all the students in that new class
 
         Optional<Student> student = studentsRepository.findByFirstNameAndLastName(body.get("firstName"), body.get("lastName"));
         Optional<Class> newClass = classesRepository.findByCode(body.get("newClassCode"));
