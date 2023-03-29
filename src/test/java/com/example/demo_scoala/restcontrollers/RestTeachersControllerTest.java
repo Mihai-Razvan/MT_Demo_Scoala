@@ -1,36 +1,25 @@
 package com.example.demo_scoala.restcontrollers;
 
-import com.example.demo_scoala.JsonTransform;
 import com.example.demo_scoala.models.Class;
-import com.example.demo_scoala.models.Student;
 import com.example.demo_scoala.models.Teacher;
-import com.example.demo_scoala.repositories.ClassesRepository;
-import com.example.demo_scoala.repositories.StudentsRepository;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
+import com.example.demo_scoala.services.TeachersService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
-import org.springframework.test.web.servlet.RequestBuilder;
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
 class RestTeachersControllerTest {
@@ -39,11 +28,7 @@ class RestTeachersControllerTest {
     @Autowired
     RestTeachersController restTeachersController;
     @MockBean
-    StudentsRepository studentsRepositoryMock;
-    @MockBean
-    ClassesRepository classesRepositoryMock;
-    @MockBean
-    JsonTransform jsonTransformMock;
+    TeachersService teachersServiceMock;
 
     @BeforeEach
     void setUp() {
@@ -56,26 +41,20 @@ class RestTeachersControllerTest {
         Class clasa2 = new Class("Filologie", 11, "HSRE2R");
         Teacher teacher1 = new Teacher("Prenume1", "Nume1", "Biologie", List.of(clasa1));
         Teacher teacher2 = new Teacher("Prenume2", "Nume2", "Chimie", List.of(clasa1, clasa2));
-        Map<String, List<Teacher>> map = new HashMap<>();
-        map.put("teachers", List.of(teacher1, teacher2));
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.enable(SerializationFeature.INDENT_OUTPUT);
-        String expected = mapper.writeValueAsString(map);
 
-        when(jsonTransformMock.teachersToJson()).thenReturn(expected);
-        MvcResult result = mockMvc.perform(get("/rest/teachers/show")).andReturn();
-        String actual = result.getResponse().getContentAsString();
-        assertEquals(expected, actual);
-    }
+        when(teachersServiceMock.getTeachers()).thenReturn(List.of(teacher1, teacher2).toString());
 
-    @Test
-    void shouldReturnError() throws Exception{
-        RequestBuilder request = MockMvcRequestBuilders.get("/rest/teachers/show");
-
-        when(jsonTransformMock.teachersToJson()).thenThrow(JsonProcessingException.class);
-        MvcResult result = mockMvc.perform(request).andReturn();
-        String actual = result.getResponse().getContentAsString();
-
-        assertEquals("ERROR", actual);
+        mockMvc.perform(get("/rest/teachers/show"))
+                .andExpect(status().isOk())
+                .andExpect(MockMvcResultMatchers.jsonPath("$", hasSize(2)))
+                .andExpect(MockMvcResultMatchers.jsonPath("$[0].firstName").value("Prenume1"))
+                .andExpect(MockMvcResultMatchers.jsonPath("$[0].lastName").value("Nume1"))
+                .andExpect(MockMvcResultMatchers.jsonPath("$[0].classes", hasSize(1)))
+                .andExpect(MockMvcResultMatchers.jsonPath("$[0].classes[0].code").value("ASD432"))
+                .andExpect(MockMvcResultMatchers.jsonPath("$[1].firstName").value("Prenume2"))
+                .andExpect(MockMvcResultMatchers.jsonPath("$[1].lastName").value("Nume2"))
+                .andExpect(MockMvcResultMatchers.jsonPath("$[1].classes", hasSize(2)))
+                .andExpect(MockMvcResultMatchers.jsonPath("$[1].classes[0].code").value("ASD432"))
+                .andExpect(MockMvcResultMatchers.jsonPath("$[1].classes[1].code").value("HSRE2R"));
     }
 }

@@ -1,32 +1,27 @@
 package com.example.demo_scoala.restcontrollers;
 
-import com.example.demo_scoala.JsonTransform;
 import com.example.demo_scoala.models.Class;
 import com.example.demo_scoala.models.Student;
-import com.example.demo_scoala.repositories.ClassesRepository;
-import com.example.demo_scoala.repositories.StudentsRepository;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
+import com.example.demo_scoala.services.StudentsService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Spy;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
-import org.springframework.test.web.servlet.RequestBuilder;
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.*;
 
+import static org.hamcrest.Matchers.hasSize;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
 class RestStudentsControllerTest {
@@ -35,11 +30,7 @@ class RestStudentsControllerTest {
     @Autowired
     RestStudentsController restStudentsController;
     @MockBean
-    StudentsRepository studentsRepositoryMock;
-    @MockBean
-    ClassesRepository classesRepositoryMock;
-    @MockBean
-    JsonTransform jsonTransformMock;
+    StudentsService studentsServiceMock;
 
     @BeforeEach
     void setUp() {
@@ -51,41 +42,30 @@ class RestStudentsControllerTest {
         String classCode = "ADFS42";
         Class clasa = new Class("Mate-Info", 7, classCode);
         Student student = new Student("Andrei", "Ionut",13, clasa);
-        Map<String, List<Student>> map = new HashMap<>();
-        map.put("students", List.of(student));
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.enable(SerializationFeature.INDENT_OUTPUT);
-        String expected = mapper.writeValueAsString(map);
 
-        when(jsonTransformMock.studentsToJson(classCode)).thenReturn(expected);
+        when(studentsServiceMock.getStudentsByClass(classCode)).thenReturn(List.of(student).toString());
+
         MvcResult result = mockMvc.perform(get("/rest/students/show?classCode=" + classCode)).andReturn();
         String actual = result.getResponse().getContentAsString();
+        assertEquals(List.of(student).toString(), actual);
 
-        assertEquals(expected, actual);
-    }
-
-    @Test
-    void shouldReturnError() throws Exception{
-        String classCode = "HE6234F";
-        RequestBuilder request = MockMvcRequestBuilders.get("/rest/students/show?classCode=" + classCode);
-
-        when(jsonTransformMock.studentsToJson(classCode)).thenThrow(JsonProcessingException.class);
-        MvcResult result = mockMvc.perform(request).andReturn();
-        String actual = result.getResponse().getContentAsString();
-
-        assertEquals("ERROR", actual);
+        mockMvc.perform(get("/rest/students/show?classCode=" + classCode))
+                .andExpect(status().isOk())
+                .andExpect(MockMvcResultMatchers.jsonPath("$", hasSize(1)))
+                .andExpect(MockMvcResultMatchers.jsonPath("$[0].firstName").value("Andrei"))
+                .andExpect(MockMvcResultMatchers.jsonPath("$[0].lastName").value("Ionut"))
+                .andExpect(MockMvcResultMatchers.jsonPath("$[0].age").value(13))
+                .andExpect(MockMvcResultMatchers.jsonPath("$[0].clasa.profile").value("Mate-Info"))
+                .andExpect(MockMvcResultMatchers.jsonPath("$[0].clasa.number").value(7))
+                .andExpect(MockMvcResultMatchers.jsonPath("$[0].clasa.code").value(classCode));
     }
 
     @Test
     void shouldAddOneStudentToClasAndReturnThatClass() throws Exception {
         String classCode = "C24GV";
         Class clasa = new Class("Filologie", 7, "C24GV");
-        Student student = new Student("Andreea", "Ioana", 15, clasa);
-        Map<String, List<Student>> map = new HashMap<>();
-        map.put("students", List.of(student));
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.enable(SerializationFeature.INDENT_OUTPUT);
-        String expected = mapper.writeValueAsString(map);
+        Student oldStudent = new Student("Ion", "Marcel", 14, clasa);
+        Student newStudent = new Student("Andreea", "Ioana", 15, clasa);
 
         String requestBody = "{\n" +
                 "    \"firstName\": \"Andreea\",\n" +
@@ -94,41 +74,19 @@ class RestStudentsControllerTest {
                 "    \"classCode\": \"" + classCode + "\"\n" +
                 "}";
 
-        when(classesRepositoryMock.findByCode(classCode)).thenReturn(Optional.of(clasa));
-        when(jsonTransformMock.studentsToJson(classCode)).thenReturn(expected);
-        MvcResult result = mockMvc.perform(post("/rest/students/add").contentType(MediaType.APPLICATION_JSON).content(requestBody)).andReturn();
-        String actual = result.getResponse().getContentAsString();
+        Map<String, String> body = new HashMap<>();
+        body.put("firstName", "Andreea");
+        body.put("lastName", "Ioana");
+        body.put("age", "15");
+        body.put("classCode", classCode);
 
-        ArgumentCaptor<Student> argument = ArgumentCaptor.forClass(Student.class);
-        verify(studentsRepositoryMock, times(1)).save(argument.capture());
-        assertEquals(expected, actual);
-    }
+        when(studentsServiceMock.addStudent(body)).thenReturn(List.of(oldStudent, newStudent).toString());
 
-    @Test
-    void shouldAddStudentToClassAndReturnError() throws Exception{
-        String classCode = "C24GV";
-        Class clasa = new Class("Filologie", 7, "C24GV");
-        Student student = new Student("Andreea", "Ioana", 15, clasa);
-        Map<String, List<Student>> map = new HashMap<>();
-        map.put("students", List.of(student));
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.enable(SerializationFeature.INDENT_OUTPUT);
-
-        String requestBody = "{\n" +
-                "    \"firstName\": \"Andreea\",\n" +
-                "    \"lastName\": \"Ioana\",\n" +
-                "    \"age\": 15,\n" +
-                "    \"classCode\": \"" + classCode + "\"\n" +
-                "}";
-
-        when(classesRepositoryMock.findByCode(classCode)).thenReturn(Optional.of(clasa));
-        when(jsonTransformMock.studentsToJson(classCode)).thenThrow(JsonProcessingException.class);
-        MvcResult result = mockMvc.perform(post("/rest/students/add").contentType(MediaType.APPLICATION_JSON).content(requestBody)).andReturn();
-        String actual = result.getResponse().getContentAsString();
-
-        ArgumentCaptor<Student> argument = ArgumentCaptor.forClass(Student.class);
-        verify(studentsRepositoryMock, times(1)).save(argument.capture());
-        assertEquals("ERROR", actual);
+        mockMvc.perform(post("/rest/students/add").contentType(MediaType.APPLICATION_JSON).content(requestBody))
+                .andExpect(status().isOk())
+                .andExpect(MockMvcResultMatchers.jsonPath("$", hasSize(2)))
+                .andExpect(MockMvcResultMatchers.jsonPath("$[0].firstName").value("Ion"))
+                .andExpect(MockMvcResultMatchers.jsonPath("$[1].firstName").value("Andreea"));
     }
 
     @Test
@@ -142,13 +100,17 @@ class RestStudentsControllerTest {
                 "    \"classCode\": \"" + classCode + "\"\n" +
                 "}";
 
-        when(classesRepositoryMock.findByCode(classCode)).thenReturn(Optional.empty());
-        MvcResult result = mockMvc.perform(post("/rest/students/add").contentType(MediaType.APPLICATION_JSON).content(requestBody)).andReturn();
-        String actual = result.getResponse().getContentAsString();
+        Map<String, String> body = new HashMap<>();
+        body.put("firstName", "Andreea");
+        body.put("lastName", "Ioana");
+        body.put("age", "15");
+        body.put("classCode", classCode);
 
-        ArgumentCaptor<Student> argument = ArgumentCaptor.forClass(Student.class);
-        verify(studentsRepositoryMock, times(0)).save(argument.capture());  //we want to check that it entered on else branch, so it didn't save
-        assertEquals("ERROR", actual);
+        when(studentsServiceMock.addStudent(body)).thenReturn("ERROR");
+
+        mockMvc.perform(post("/rest/students/add").contentType(MediaType.APPLICATION_JSON).content(requestBody))
+                .andExpect(status().isOk())
+                .andExpect(content().string("ERROR"));
     }
 
     @Test
@@ -158,11 +120,6 @@ class RestStudentsControllerTest {
         Class oldClass = new Class("Mate-Info", 7, "SDGF3");
         Student existingStudent = new Student("Andreea", "Ioana", 13, newClass);
         Student movedStudent = new Student("Ion", "Marcel", 14, oldClass);
-        Map<String, List<Student>> map = new HashMap<>();
-        map.put("students", List.of(existingStudent, movedStudent));
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.enable(SerializationFeature.INDENT_OUTPUT);
-        String expected = mapper.writeValueAsString(map);
 
         String requestBody = "{\n" +
                 "    \"firstName\": \"Ion\",\n" +
@@ -170,43 +127,22 @@ class RestStudentsControllerTest {
                 "     \"newClassCode\": \"" + newClassCode + "\"\n" +
                 "}";
 
-        when(studentsRepositoryMock.findByFirstNameAndLastName("Ion", "Marcel")).thenReturn(Optional.of(movedStudent));
-        when(classesRepositoryMock.findByCode(newClassCode)).thenReturn(Optional.of(newClass));
-        when(jsonTransformMock.studentsToJson(newClassCode)).thenReturn(expected);
-        MvcResult result = mockMvc.perform(patch("/rest/students/move").contentType(MediaType.APPLICATION_JSON).content(requestBody)).andReturn();
-        String actual = result.getResponse().getContentAsString();
+        Map<String, String> body = new HashMap<>();
+        body.put("firstName", "Ion");
+        body.put("lastName", "Marcel");
+        body.put("newClassCode", newClassCode);
 
-        ArgumentCaptor<Student> argument = ArgumentCaptor.forClass(Student.class);
-        verify(studentsRepositoryMock, times(1)).save(argument.capture());
-        assertEquals(expected, actual);
+        when(studentsServiceMock.moveStudent(body)).thenReturn(List.of(existingStudent, movedStudent).toString());
+
+        mockMvc.perform(patch("/rest/students/move").contentType(MediaType.APPLICATION_JSON).content(requestBody))
+                .andExpect(status().isOk())
+                .andExpect(MockMvcResultMatchers.jsonPath("$", hasSize(2)))
+                .andExpect(MockMvcResultMatchers.jsonPath("$[0].firstName").value("Andreea"))
+                .andExpect(MockMvcResultMatchers.jsonPath("$[1].firstName").value("Ion"));
     }
 
     @Test
-    void shouldMoveStudentAndReturnError() throws Exception{
-        String newClassCode = "C24GV";
-        Class newClass = new Class("Filologie", 7, newClassCode);
-        Class oldClass = new Class("Mate-Info", 7, "SDGF3");
-        Student movedStudent = new Student("Ion", "Marcel", 14, oldClass);
-
-        String requestBody = "{\n" +
-                "    \"firstName\": \"Ion\",\n" +
-                "    \"lastName\": \"Marcel\",\n" +
-                "     \"newClassCode\": \"" + newClassCode + "\"\n" +
-                "}";
-
-        when(studentsRepositoryMock.findByFirstNameAndLastName("Ion", "Marcel")).thenReturn(Optional.of(movedStudent));
-        when(classesRepositoryMock.findByCode(newClassCode)).thenReturn(Optional.of(newClass));
-        when(jsonTransformMock.studentsToJson(newClassCode)).thenThrow(JsonProcessingException.class);
-        MvcResult result = mockMvc.perform(patch("/rest/students/move").contentType(MediaType.APPLICATION_JSON).content(requestBody)).andReturn();
-        String actual = result.getResponse().getContentAsString();
-
-        ArgumentCaptor<Student> argument = ArgumentCaptor.forClass(Student.class);
-        verify(studentsRepositoryMock, times(1)).save(argument.capture());
-        assertEquals("ERROR", actual);
-    }
-
-    @Test
-    void shouldNotMovStudentAndReturnError() throws Exception{
+    void shouldNotMoveStudentAndReturnError() throws Exception{
         String newClassCode = "C24GV";
 
         String requestBody = "{\n" +
@@ -215,13 +151,16 @@ class RestStudentsControllerTest {
                 "     \"newClassCode\": \"" + newClassCode + "\"\n" +
                 "}";
 
-        when(studentsRepositoryMock.findByFirstNameAndLastName("Ion", "Marcel")).thenReturn(Optional.empty());
-        MvcResult result = mockMvc.perform(patch("/rest/students/move").contentType(MediaType.APPLICATION_JSON).content(requestBody)).andReturn();
-        String actual = result.getResponse().getContentAsString();
+        Map<String, String> body = new HashMap<>();
+        body.put("firstName", "Ion");
+        body.put("lastName", "Marcel");
+        body.put("newClassCode", newClassCode);
 
-        ArgumentCaptor<Student> argument = ArgumentCaptor.forClass(Student.class);
-        verify(studentsRepositoryMock, times(0)).save(argument.capture());
-        assertEquals("ERROR", actual);
+        when(studentsServiceMock.moveStudent(body)).thenReturn("ERROR");
+
+        mockMvc.perform(patch("/rest/students/move").contentType(MediaType.APPLICATION_JSON).content(requestBody))
+                .andExpect(status().isOk())
+                .andExpect(content().string("ERROR"));
     }
 
     @Test
@@ -229,62 +168,43 @@ class RestStudentsControllerTest {
         String classCode = "C24GV";
         Class clasa = new Class("Filologie", 7, classCode);
         Student remainingStudent = new Student("Andreea", "Ioana", 13, clasa);
-        Student toDeleteStudent = new Student("Ion", "Marcel", 14, clasa);
-        Map<String, List<Student>> map = new HashMap<>();
-        map.put("students", List.of(remainingStudent));
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.enable(SerializationFeature.INDENT_OUTPUT);
-        String expected = mapper.writeValueAsString(map);
 
         String requestBody = "{\n" +
                 "    \"firstName\": \"Ion\",\n" +
                 "    \"lastName\": \"Marcel\"\n" +
                 "}";
 
-        when(studentsRepositoryMock.findByFirstNameAndLastName("Ion", "Marcel")).thenReturn(Optional.of(toDeleteStudent));
-        when(jsonTransformMock.studentsToJson(classCode)).thenReturn(expected);
-        MvcResult result = mockMvc.perform(delete("/rest/students/delete").contentType(MediaType.APPLICATION_JSON).content(requestBody)).andReturn();
-        String actual = result.getResponse().getContentAsString();
+        Map<String, String> body = new HashMap<>();
+        body.put("firstName", "Ion");
+        body.put("lastName", "Marcel");
 
-        ArgumentCaptor<Student> argument = ArgumentCaptor.forClass(Student.class);
-        verify(studentsRepositoryMock, times(1)).delete(argument.capture());
-        assertEquals(expected, actual);
+        when(studentsServiceMock.deleteStudent(body)).thenReturn(List.of(remainingStudent).toString());
+        mockMvc.perform(delete("/rest/students/delete").contentType(MediaType.APPLICATION_JSON).content(requestBody))
+                .andExpect(status().isOk())
+                .andExpect(MockMvcResultMatchers.jsonPath("$", hasSize(1)))
+                .andExpect(MockMvcResultMatchers.jsonPath("$[0].firstName").value("Andreea"))
+                .andExpect(MockMvcResultMatchers.jsonPath("$[0].lastName").value("Ioana"))
+                .andExpect(MockMvcResultMatchers.jsonPath("$[0].age").value(13))
+                .andExpect(MockMvcResultMatchers.jsonPath("$[0].clasa.profile").value("Filologie"))
+                .andExpect(MockMvcResultMatchers.jsonPath("$[0].clasa.number").value(7))
+                .andExpect(MockMvcResultMatchers.jsonPath("$[0].clasa.code").value(classCode));
     }
 
     @Test
-    void shouldDeleteStudentAndReturnError() throws Exception{
-        String classCode = "C24GV";
-        Class clasa = new Class("Filologie", 7, classCode);
-        Student toDeleteStudent = new Student("Ion", "Marcel", 14, clasa);
-
+    void shouldNotDeleteStudentAndReturnError() throws Exception{;
         String requestBody = "{\n" +
                 "    \"firstName\": \"Ion\",\n" +
                 "    \"lastName\": \"Marcel\"\n" +
                 "}";
 
-        when(studentsRepositoryMock.findByFirstNameAndLastName("Ion", "Marcel")).thenReturn(Optional.of(toDeleteStudent));
-        when(jsonTransformMock.studentsToJson(classCode)).thenThrow(JsonProcessingException.class);
-        MvcResult result = mockMvc.perform(delete("/rest/students/delete").contentType(MediaType.APPLICATION_JSON).content(requestBody)).andReturn();
-        String actual = result.getResponse().getContentAsString();
+        Map<String, String> body = new HashMap<>();
+        body.put("firstName", "Ion");
+        body.put("lastName", "Marcel");
 
-        ArgumentCaptor<Student> argument = ArgumentCaptor.forClass(Student.class);
-        verify(studentsRepositoryMock, times(1)).delete(argument.capture());
-        assertEquals("ERROR", actual);
-    }
+        when(studentsServiceMock.deleteStudent(body)).thenReturn("ERROR");
 
-    @Test
-    void shouldNotDeleteStudentAndReturnError() throws Exception{
-        String requestBody = "{\n" +
-                "    \"firstName\": \"Ion\",\n" +
-                "    \"lastName\": \"Marcel\"\n" +
-                "}";
-
-        when(studentsRepositoryMock.findByFirstNameAndLastName("Ion", "Marcel")).thenReturn(Optional.empty());
-        MvcResult result = mockMvc.perform(delete("/rest/students/delete").contentType(MediaType.APPLICATION_JSON).content(requestBody)).andReturn();
-        String actual = result.getResponse().getContentAsString();
-
-        ArgumentCaptor<Student> argument = ArgumentCaptor.forClass(Student.class);
-        verify(studentsRepositoryMock, times(0)).delete(argument.capture());
-        assertEquals("ERROR", actual);
+        mockMvc.perform(delete("/rest/students/delete").contentType(MediaType.APPLICATION_JSON).content(requestBody))
+                .andExpect(status().isOk())
+                .andExpect(content().string("ERROR"));
     }
 }
