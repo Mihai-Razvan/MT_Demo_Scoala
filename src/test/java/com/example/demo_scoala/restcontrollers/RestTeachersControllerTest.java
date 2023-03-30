@@ -42,7 +42,7 @@ class RestTeachersControllerTest {
         Teacher teacher1 = new Teacher("Prenume1", "Nume1", "Biologie", List.of(clasa1));
         Teacher teacher2 = new Teacher("Prenume2", "Nume2", "Chimie", List.of(clasa1, clasa2));
 
-        when(teachersServiceMock.getTeachers()).thenReturn(List.of(teacher1, teacher2).toString());
+        when(teachersServiceMock.getTeachers()).thenReturn(List.of(teacher1, teacher2));
 
         mockMvc.perform(get("/rest/teachers/show"))
                 .andExpect(status().isOk())

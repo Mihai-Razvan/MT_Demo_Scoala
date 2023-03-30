@@ -20,23 +20,23 @@ public class StudentsService {
         this.classesRepository = classesRepository;
     }
 
-    public String getStudentsByClass(String classCode) {
-        return studentsRepository.findByClasaCode(classCode).toString();
+    public List<Student> getStudentsByClass(String classCode) {
+        return studentsRepository.findByClasaCode(classCode);
     }
 
-    public String addStudent(Map<String, String> body) {
+    public Student addStudent(Map<String, String> body) {
         Optional<Class> clasa = classesRepository.findByCode(body.get("classCode"));
 
         if(clasa.isPresent()) {
             Student newStudent = new Student(body.get("firstName"), body.get("lastName"), Integer.parseInt(body.get("age")), clasa.get());
             studentsRepository.save(newStudent);
-            return studentsRepository.findByClasaCode(body.get("classCode")).toString();
+            return newStudent;
         }
 
-        return "ERROR";
+        return null;
     }
 
-    public String moveStudent(Map<String, String> body) {
+    public Student moveStudent(Map<String, String> body) {
         Optional<Student> student = studentsRepository.findByFirstNameAndLastName(body.get("firstName"), body.get("lastName"));
         Optional<Class> newClass = classesRepository.findByCode(body.get("newClassCode"));
 
@@ -44,21 +44,20 @@ public class StudentsService {
             Student updatedStudent = student.get();
             updatedStudent.setClasa(newClass.get());
             studentsRepository.save(updatedStudent);
-            return studentsRepository.findByClasaCode(body.get("newClassCode")).toString();
+            return updatedStudent;
         }
 
-        return "ERROR";
+        return null;
     }
 
-    public String deleteStudent(@RequestBody Map<String, String> body) {
+    public Student deleteStudent(@RequestBody Map<String, String> body) {
         Optional<Student> student = studentsRepository.findByFirstNameAndLastName(body.get("firstName"), body.get("lastName"));
 
         if(student.isPresent()) {
-            String classCode = student.get().getClasa().getCode();
             studentsRepository.delete(student.get());
-            return studentsRepository.findByClasaCode(classCode).toString();
+            return student.get();
         }
 
-        return "ERROR";
+        return null;
     }
 }

@@ -32,15 +32,15 @@ class TeachersServiceTest {
         Teacher teacher2 = new Teacher("Prenume2", "Nume2", "Chimie", List.of(clasa1, clasa2));
 
         when(teachersRepositoryMock.findAll()).thenReturn(List.of(teacher1, teacher2));
-        String actual = teachersService.getTeachers();
-        assertEquals(List.of(teacher1, teacher2).toString(), actual);
+        List<Teacher> actual = teachersService.getTeachers();
+        assertEquals(List.of(teacher1, teacher2), actual);
     }
 
     @Test
     void shouldReturnEmptyList() {
         when(teachersRepositoryMock.findAll()).thenReturn(List.of());
 
-        String actual = teachersService.getTeachers();
-        assertEquals(List.of().toString(), actual);
+        List<Teacher> actual = teachersService.getTeachers();
+        assertTrue(actual.isEmpty());
     }
 }

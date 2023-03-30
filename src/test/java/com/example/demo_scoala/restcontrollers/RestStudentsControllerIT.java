@@ -1,5 +1,7 @@
 package com.example.demo_scoala.restcontrollers;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -12,6 +14,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.any;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -19,17 +24,22 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest(properties = "spring.jpa.hibernate.ddl-auto=create")
-@TestPropertySource(properties = {"spring.datasource.url=jdbc:h2:file:/home/mihai/Intellij-java11/Demo_Scoala/testDb"})
+@TestPropertySource(properties = {"spring.datasource.url=jdbc:h2:file:~/testDb"})
 @Transactional
 class RestStudentsControllerIT {
 
     MockMvc mockMvc;
     @Autowired
     RestStudentsController restStudentsController;
+    ObjectMapper mapper;
+    Map<String, String> body;
 
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(restStudentsController).build();
+        mapper = new ObjectMapper();
+        mapper.enable(SerializationFeature.INDENT_OUTPUT);
+        body = new HashMap<>();
     }
 
     @Test
@@ -48,115 +58,96 @@ class RestStudentsControllerIT {
 
     @Test
     @Sql("students_controller_data_2.sql")
-    void shouldAddOneStudentToClasAndReturnThatClass() throws Exception {
+    void shouldAddOneStudentToClasAndReturnThatStudent() throws Exception {
         String classCode = "ABC123";
 
-        String requestBody = "{\n" +
-                "    \"firstName\": \"Andreea\",\n" +
-                "    \"lastName\": \"Ioana\",\n" +
-                "    \"age\": 15,\n" +
-                "    \"classCode\": \"" + classCode + "\"\n" +
-                "}";
+        body.put("firstName", "Andreea");
+        body.put("lastName", "Ioana");
+        body.put("age", "15");
+        body.put("classCode", classCode);
 
-        mockMvc.perform(post("/rest/students/add").contentType(MediaType.APPLICATION_JSON).content(requestBody))
+        mockMvc.perform(post("/rest/students/add").contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(body)))
                 .andExpect(status().isOk())
-                .andExpect(MockMvcResultMatchers.jsonPath("$", hasSize(2)))
-                .andExpect(MockMvcResultMatchers.jsonPath("$[0].firstName").value("Andrei"))
-                .andExpect(MockMvcResultMatchers.jsonPath("$[1].firstName").value("Andreea"));
+                .andExpect(MockMvcResultMatchers.jsonPath("firstName").value("Andreea"))
+                .andExpect(MockMvcResultMatchers.jsonPath("clasa.code").value(classCode));
     }
 
     @Test
-    void shouldNotFindClassAndReturnError() throws Exception {   //no class found -> error
+    void shouldNotFindClassAndReturnNull() throws Exception {   //no class found -> null
         String classCode = "ABC123";
 
-        String requestBody = "{\n" +
-                "    \"firstName\": \"Andreea\",\n" +
-                "    \"lastName\": \"Ioana\",\n" +
-                "    \"age\": 15,\n" +
-                "    \"classCode\": \"" + classCode + "\"\n" +
-                "}";
+        body.put("firstName", "Andreea");
+        body.put("lastName", "Ioana");
+        body.put("age", "15");
+        body.put("classCode", classCode);
 
-        mockMvc.perform(post("/rest/students/add").contentType(MediaType.APPLICATION_JSON).content(requestBody))
+        mockMvc.perform(post("/rest/students/add").contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(body)))
                 .andExpect(status().isOk())
-                .andExpect(content().string("ERROR"));
+                .andExpect(MockMvcResultMatchers.jsonPath("$").doesNotExist());
     }
 
     @Test
     @Sql("students_controller_data_3.sql")
-    void shouldMoveStudentAndReturnThatClass() throws Exception {
+    void shouldMoveStudentAndReturnThatStudent() throws Exception {
         String newClassCode = "DEF456";
 
-        String requestBody = "{\n" +
-                "    \"firstName\": \"Andrei\",\n" +
-                "    \"lastName\": \"Ion\",\n" +
-                "    \"newClassCode\": \"" + newClassCode + "\"\n" +
-                "}";
+        body.put("firstName", "Andrei");
+        body.put("lastName", "Ion");
+        body.put("newClassCode", newClassCode);
 
-        mockMvc.perform(patch("/rest/students/move").contentType(MediaType.APPLICATION_JSON).content(requestBody))
+        mockMvc.perform(patch("/rest/students/move").contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(body)))
                 .andExpect(status().isOk())
-                .andExpect(MockMvcResultMatchers.jsonPath("$", hasSize(2)))
-                .andExpect(MockMvcResultMatchers.jsonPath("$[0].firstName").value("Andrei"))
-                .andExpect(MockMvcResultMatchers.jsonPath("$[0].clasa.code").value("DEF456"))
-                .andExpect(MockMvcResultMatchers.jsonPath("$[1].firstName").value("Marcel"))
-                .andExpect(MockMvcResultMatchers.jsonPath("$[1].clasa.code").value("DEF456"));
+                .andExpect(MockMvcResultMatchers.jsonPath("firstName").value("Andrei"))
+                .andExpect(MockMvcResultMatchers.jsonPath("clasa.code").value(newClassCode));
     }
 
     @Test
     @Sql("students_controller_data_3.sql")
-    void shouldNotFindGivenStudentAndReturnError() throws Exception {      //no student found -> error
+    void shouldNotFindGivenStudentAndReturnNull() throws Exception {      //no student found -> null
         String newClassCode = "DEF456";
 
-        String requestBody = "{\n" +
-                "    \"firstName\": \"Gicu\",\n" +
-                "    \"lastName\": \"Ion\",\n" +
-                "    \"newClassCode\": \"" + newClassCode + "\"\n" +
-                "}";
+        body.put("firstName", "Gicu");
+        body.put("lastName", "Ion");
+        body.put("newClassCode", newClassCode);
 
-        mockMvc.perform(patch("/rest/students/move").contentType(MediaType.APPLICATION_JSON).content(requestBody))
+        mockMvc.perform(patch("/rest/students/move").contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(body)))
                 .andExpect(status().isOk())
-                .andExpect(content().string("ERROR"));
+                .andExpect(MockMvcResultMatchers.jsonPath("$").doesNotExist());
     }
 
     @Test
     @Sql("students_controller_data_3.sql")
-    void shouldNotFindGivenClassAndReturnError() throws Exception {      //no class found -> error
+    void shouldNotFindGivenClassAndReturnNull() throws Exception {      //no class found -> null
         String newClassCode = "FGQ652";
 
-        String requestBody = "{\n" +
-                "    \"firstName\": \"Andrei\",\n" +
-                "    \"lastName\": \"Ion\",\n" +
-                "    \"newClassCode\": \"" + newClassCode + "\"\n" +
-                "}";
+        body.put("firstName", "Gicu");
+        body.put("lastName", "Ion");
+        body.put("newClassCode", newClassCode);
 
-        mockMvc.perform(patch("/rest/students/move").contentType(MediaType.APPLICATION_JSON).content(requestBody))
+        mockMvc.perform(patch("/rest/students/move").contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(body)))
                 .andExpect(status().isOk())
-                .andExpect(content().string("ERROR"));
+                .andExpect(MockMvcResultMatchers.jsonPath("$").doesNotExist());
     }
 
     @Test
     @Sql("students_controller_data_4.sql")
-    void shouldDeleteStudentAndReturnThatClass() throws Exception {
-        String requestBody = "{\n" +
-                "    \"firstName\": \"Andrei\",\n" +
-                "    \"lastName\": \"Ion\"\n" +
-                "}";
+    void shouldDeleteStudentAndReturnThatStudent() throws Exception {
+        body.put("firstName", "Andrei");
+        body.put("lastName", "Ion");
 
-        mockMvc.perform(delete("/rest/students/delete").contentType(MediaType.APPLICATION_JSON).content(requestBody))
+        mockMvc.perform(delete("/rest/students/delete").contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(body)))
                 .andExpect(status().isOk())
-                .andExpect(MockMvcResultMatchers.jsonPath("$", hasSize(1)))
-                .andExpect(MockMvcResultMatchers.jsonPath("$[0].firstName").value("Marcel"));
+                .andExpect(MockMvcResultMatchers.jsonPath("firstName").value("Andrei"));
     }
 
     @Test
     @Sql("students_controller_data_4.sql")
-    void shouldNotFindStudentAndReturnError() throws Exception {      //no student found -> error
-        String requestBody = "{\n" +
-                "    \"firstName\": \"Gicu\",\n" +
-                "    \"lastName\": \"Ion\"\n" +
-                "}";
+    void shouldNotFindStudentAndReturnNull() throws Exception {      //no student found -> null
+        body.put("firstName", "Gicu");
+        body.put("lastName", "Ion");
 
-        mockMvc.perform(delete("/rest/students/delete").contentType(MediaType.APPLICATION_JSON).content(requestBody))
+        mockMvc.perform(delete("/rest/students/delete").contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(body)))
                 .andExpect(status().isOk())
-                .andExpect(content().string("ERROR"));
+                .andExpect(MockMvcResultMatchers.jsonPath("$").doesNotExist());
     }
 }

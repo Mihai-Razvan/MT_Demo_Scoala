@@ -34,7 +34,7 @@ class StudentsServiceTest {
     StudentsService studentsService;
 
     @Test
-    void shouldReturnOneStudentToJson() {   //testing getStudentsByClass
+    void shouldReturnOneStudentToList() {   //testing getStudentsByClass
         String classCode = "ADFS42";
         Class clasa = new Class("Mate-Info", 7, classCode);
         Student student = new Student("Andrei", "Ionut",13, clasa);
@@ -42,12 +42,12 @@ class StudentsServiceTest {
 
         when(studentsRepositoryMock.findByClasaCode(classCode)).thenReturn(studentList);
 
-        String actual = studentsService.getStudentsByClass(classCode);
-        assertEquals(studentList.toString(), actual);
+        List<Student> actual = studentsService.getStudentsByClass(classCode);
+        assertEquals(studentList, actual);
     }
 
     @Test
-    void shouldReturnTwoStudentsInOneClassToJson() {  //testing getStudentsByClass
+    void shouldReturnTwoStudentsInOneClassToList() {  //testing getStudentsByClass
         String classCode = "ADFS42";
         Class clasa = new Class("Mate-Info", 7, classCode);
         Student student1 = new Student("Andrei", "Ionut",13, clasa);
@@ -56,25 +56,25 @@ class StudentsServiceTest {
 
         when(studentsRepositoryMock.findByClasaCode(classCode)).thenReturn(studentList);
 
-        String actual = studentsService.getStudentsByClass(classCode);
-        assertEquals(studentList.toString(), actual);
+        List<Student> actual = studentsService.getStudentsByClass(classCode);
+        assertEquals(studentList, actual);
     }
 
     @Test
-    void shouldReturnNoStudentInClassToJson() {  //testing getStudentsByClass
+    void shouldReturnNoStudentInClassToList() {  //testing getStudentsByClass
         String classCode = "FAEAS5";
 
         when(studentsRepositoryMock.findByClasaCode(classCode)).thenReturn(new ArrayList<>());
 
-        String actual = studentsService.getStudentsByClass(classCode);
-        assertEquals(List.of().toString(), actual);
+        List<Student> actual = studentsService.getStudentsByClass(classCode);
+        assertEquals(List.of(), actual);
     }
 
     @Test
-    void shouldSaveStudentToClassAndReturnThatClass() {  //testing addStudent
+    void shouldSaveStudentToClassAndReturnThatStudent() {  //testing addStudent
         String classCode = "C24GV";
         Class clasa = new Class("Filologie", 7, classCode);
-        Student student = new Student("Andreea", "Ioana", 15, clasa);
+        Student newStudent = new Student("Andreea", "Ioana", 15, clasa);
 
         Map<String, String> body = new HashMap<>();
         body.put("firstName", "Andreea");
@@ -83,15 +83,18 @@ class StudentsServiceTest {
         body.put("classCode", classCode);
 
         when(classesRepositoryMock.findByCode(classCode)).thenReturn(Optional.of(clasa));
-        when(studentsRepositoryMock.findByClasaCode(classCode)).thenReturn(List.of(student));
 
-        String actual = studentsService.addStudent(body);
+        Student actual = studentsService.addStudent(body);
         verify(studentsRepositoryMock, times(1)).save(any());
-        assertEquals(List.of(student).toString(), actual);
+       // assertEquals(newStudent, actual);   NU MERGE????
+        assertEquals(newStudent.getFirstName(), actual.getFirstName());
+        assertEquals(newStudent.getLastName(), actual.getLastName());
+        assertEquals(newStudent.getAge(), actual.getAge());
+        assertEquals(newStudent.getClasa(), actual.getClasa());
     }
 
     @Test
-    void shouldReturnError() {  //testing addStudent
+    void shouldReturnNull() {  //testing addStudent
         String classCode = "C24GV";
 
         Map<String, String> body = new HashMap<>();
@@ -102,16 +105,18 @@ class StudentsServiceTest {
 
         when(classesRepositoryMock.findByCode(classCode)).thenReturn(Optional.empty());
 
-        String actual = studentsService.addStudent(body);
+        Student actual = studentsService.addStudent(body);
         verify(studentsRepositoryMock, times(0)).save(any());
-        assertEquals("ERROR", actual);
+        assertNull(actual);
     }
 
     @Test
-    void shouldMoveStudentToClassAndReturnThatClass() {  //testing moveStudent
-        String newClassCode = "C24GV";
-        Class clasa = new Class("Filologie", 7, newClassCode);
-        Student student = new Student("Andreea", "Ioana", 15, clasa);
+    void shouldMoveStudentToClassAndReturnThatStudent() {  //testing moveStudent
+        String oldClassCode = "C24GV";
+        String newClassCode = "HE632H";
+        Class oldClass = new Class("Filologie", 7, oldClassCode);
+        Class newClass = new Class("Mate-Info", 7, newClassCode);
+        Student student = new Student("Andreea", "Ioana", 15, oldClass);
 
         Map<String, String> body = new HashMap<>();
         body.put("firstName", "Andreea");
@@ -119,16 +124,18 @@ class StudentsServiceTest {
         body.put("newClassCode", newClassCode);
 
         when(studentsRepositoryMock.findByFirstNameAndLastName(body.get("firstName"), body.get("lastName"))).thenReturn(Optional.of(student));
-        when(classesRepositoryMock.findByCode(newClassCode)).thenReturn(Optional.of(clasa));
-        when(studentsRepositoryMock.findByClasaCode(newClassCode)).thenReturn(List.of(student));
+        when(classesRepositoryMock.findByCode(newClassCode)).thenReturn(Optional.of(newClass));
 
-        String actual = studentsService.moveStudent(body);
+        Student actual = studentsService.moveStudent(body);
         verify(studentsRepositoryMock, times(1)).save(any());
-        assertEquals(List.of(student).toString(), actual);
+        assertEquals(student.getFirstName(), actual.getFirstName());
+        assertEquals(student.getLastName(), actual.getLastName());
+        assertEquals(student.getAge(), actual.getAge());
+        assertEquals(newClassCode, actual.getClasa().getCode());
     }
 
     @Test
-    void shouldNotFindGivenStudentAndReturnError() {  //testing moveStudent
+    void shouldNotFindGivenStudentAndReturnNull() {  //testing moveStudent
         String newClassCode = "C24GV";
         Class clasa = new Class("Filologie", 7, newClassCode);
 
@@ -140,13 +147,13 @@ class StudentsServiceTest {
         when(studentsRepositoryMock.findByFirstNameAndLastName(body.get("firstName"), body.get("lastName"))).thenReturn(Optional.empty());
         when(classesRepositoryMock.findByCode(newClassCode)).thenReturn(Optional.of(clasa));
 
-        String actual = studentsService.moveStudent(body);
+        Student actual = studentsService.moveStudent(body);
         verify(studentsRepositoryMock, times(0)).save(any());
-        assertEquals("ERROR", actual);
+        assertNull(actual);
     }
 
     @Test
-    void shouldNotFindGivenClassAndReturnError() {  //testing moveStudent
+    void shouldNotFindGivenClassAndReturnNull() {  //testing moveStudent
         String newClassCode = "C24GV";
         Class clasa = new Class("Filologie", 7, newClassCode);
         Student student = new Student("Andreea", "Ioana", 15, clasa);
@@ -159,40 +166,38 @@ class StudentsServiceTest {
         when(studentsRepositoryMock.findByFirstNameAndLastName(body.get("firstName"), body.get("lastName"))).thenReturn(Optional.of(student));
         when(classesRepositoryMock.findByCode(newClassCode)).thenReturn(Optional.empty());
 
-        String actual = studentsService.moveStudent(body);
+        Student actual = studentsService.moveStudent(body);
         verify(studentsRepositoryMock, times(0)).save(any());
-        assertEquals("ERROR", actual);
+        assertNull(actual);
     }
 
     @Test
-    void shouldDeleteStudentAndReturnOneRemainingStudentInClass() {  //testing deleteStudent
+    void shouldDeleteStudentAndReturnThatStudent() {  //testing deleteStudent
         String classCode = "C24GV";
         Class clasa = new Class("Filologie", 7, classCode);
         Student deletedStudent = new Student("Andreea", "Ioana", 14, clasa);
-        Student remainingStudent = new Student("Gigel", "Ionel", 15, clasa);
 
         Map<String, String> body = new HashMap<>();
         body.put("firstName", "Andreea");
         body.put("lastName", "Ioana");
 
         when(studentsRepositoryMock.findByFirstNameAndLastName(body.get("firstName"), body.get("lastName"))).thenReturn(Optional.of(deletedStudent));
-        when(studentsRepositoryMock.findByClasaCode(classCode)).thenReturn(List.of(remainingStudent));
 
-        String actual = studentsService.deleteStudent(body);
+        Student actual = studentsService.deleteStudent(body);
         verify(studentsRepositoryMock, times(1)).delete(any());
-        assertEquals(List.of(remainingStudent).toString(), actual);
+        assertEquals(deletedStudent, actual);
     }
 
     @Test
-    void shouldNotDeleteStudentAndReturnError() {  //testing deleteStudent
+    void shouldNotDeleteStudentAndReturnNull() {  //testing deleteStudent
         Map<String, String> body = new HashMap<>();
         body.put("firstName", "Andreea");
         body.put("lastName", "Ioana");
 
         when(studentsRepositoryMock.findByFirstNameAndLastName(body.get("firstName"), body.get("lastName"))).thenReturn(Optional.empty());
 
-        String actual = studentsService.deleteStudent(body);
+        Student actual = studentsService.deleteStudent(body);
         verify(studentsRepositoryMock, times(0)).delete(any());
-        assertEquals("ERROR", actual);
+        assertNull(actual);
     }
 }

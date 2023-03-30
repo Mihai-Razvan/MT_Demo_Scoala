@@ -17,7 +17,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest(properties = "spring.jpa.hibernate.ddl-auto=create")
-@TestPropertySource(properties = {"spring.datasource.url=jdbc:h2:file:/home/mihai/Intellij-java11/Demo_Scoala/testDb"})
+@TestPropertySource(properties = {"spring.datasource.url=jdbc:h2:file:~/testDb"})
 @Transactional
 class RestTeachersControllerIT {
 
