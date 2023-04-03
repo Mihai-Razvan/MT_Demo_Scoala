@@ -1,4 +1,6 @@
-FROM openjdk:17
-COPY .target/classes/com/example/demo_scoala/ /tmp
-WORKDIR /tmp
-ENTRYPOINT ["java","DemoScoalaApplication"]
+FROM openjdk:17-alpine
+VOLUME /tmp
+EXPOSE 8080
+ARG JAR_FILE=target/Demo_Scoala-0.0.1-SNAPSHOT.jar
+ADD ${JAR_FILE} app.jar
+ENTRYPOINT ["java","-jar","/app.jar"]

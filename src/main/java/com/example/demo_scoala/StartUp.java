@@ -28,7 +28,10 @@ public class StartUp implements CommandLineRunner {
     @Override
     public void run(String... args) throws Exception {
 
-        /*Class clasa1 = new Class("Filologie", 11, "C24GV");
+        if(teachersRepository.count() != 0)
+            return;
+
+        Class clasa1 = new Class("Filologie", 11, "C24GV");
         Class clasa2 = new Class("Mate-Info", 10, "HE632H");
         classesRepository.saveAll(List.of(clasa1, clasa2));
 
@@ -41,6 +44,6 @@ public class StartUp implements CommandLineRunner {
         Teacher teacher3 = new Teacher("ProfPrenume3", "ProfNume3", "Info", List.of(clasa2));
 
         studentsRepository.saveAll(List.of(student1, student2, student3));
-        teachersRepository.saveAll(List.of(teacher1, teacher2, teacher3)); */
+        teachersRepository.saveAll(List.of(teacher1, teacher2, teacher3));
     }
 }
