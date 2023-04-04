@@ -9,6 +9,9 @@
         <module name="Demo_Scoala" />
       </profile>
     </annotationProcessing>
+    <bytecodeTargetLevel>
+      <module name="Demo_Scoala" target="17" />
+    </bytecodeTargetLevel>
   </component>
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">

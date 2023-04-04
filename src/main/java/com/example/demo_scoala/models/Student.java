@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import jakarta.persistence.*;
 
+import java.util.Objects;
+
 @Entity(name = "Student")
 public class Student extends Person{
 
