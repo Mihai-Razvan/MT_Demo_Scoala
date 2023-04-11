@@ -1,5 +1,6 @@
 package com.example.demo_scoala.services;
 
+import com.example.demo_scoala.exceptions.NoFoundException;
 import com.example.demo_scoala.models.Class;
 import com.example.demo_scoala.models.Student;
 import com.example.demo_scoala.repositories.ClassesRepository;
@@ -20,11 +21,15 @@ public class StudentsService {
         this.classesRepository = classesRepository;
     }
 
-    public List<Student> getStudentsByClass(String classCode) {
+    public List<Student> getStudentsByClassCode(String classCode) throws NoFoundException{
+        Optional<Class> clasa = classesRepository.findByCode(classCode);
+        if(clasa.isEmpty())
+            throw new NoFoundException("Class not found!");
+
         return studentsRepository.findByClasaCode(classCode);
     }
 
-    public Student addStudent(Map<String, String> body) {
+    public Student addStudentToClass(Map<String, String> body) throws NoFoundException{
         Optional<Class> clasa = classesRepository.findByCode(body.get("classCode"));
 
         if(clasa.isPresent()) {
@@ -33,24 +38,25 @@ public class StudentsService {
             return newStudent;
         }
 
-        return null;
+        throw new NoFoundException("Class not found!");
     }
 
-    public Student moveStudent(Map<String, String> body) {
+    public Student moveStudentToOtherClass(Map<String, String> body) throws NoFoundException {
         Optional<Student> student = studentsRepository.findByFirstNameAndLastName(body.get("firstName"), body.get("lastName"));
+        if(student.isEmpty())
+            throw new NoFoundException("Student not found!");
+
         Optional<Class> newClass = classesRepository.findByCode(body.get("newClassCode"));
+        if(newClass.isEmpty())
+            throw new NoFoundException("Class not found!");
 
-        if(student.isPresent() && newClass.isPresent()) {
-            Student updatedStudent = student.get();
-            updatedStudent.setClasa(newClass.get());
-            studentsRepository.save(updatedStudent);
-            return updatedStudent;
-        }
-
-        return null;
+        Student updatedStudent = student.get();
+        updatedStudent.setClasa(newClass.get());
+        studentsRepository.save(updatedStudent);
+        return updatedStudent;
     }
 
-    public Student deleteStudent(@RequestBody Map<String, String> body) {
+    public Student deleteStudent(@RequestBody Map<String, String> body) throws NoFoundException{
         Optional<Student> student = studentsRepository.findByFirstNameAndLastName(body.get("firstName"), body.get("lastName"));
 
         if(student.isPresent()) {
@@ -58,6 +64,6 @@ public class StudentsService {
             return student.get();
         }
 
-        return null;
+        throw new NoFoundException("Student not found!");
     }
 }

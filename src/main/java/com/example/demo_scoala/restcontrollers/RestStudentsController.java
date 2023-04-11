@@ -1,5 +1,6 @@
 package com.example.demo_scoala.restcontrollers;
 
+import com.example.demo_scoala.exceptions.NoFoundException;
 import com.example.demo_scoala.models.Student;
 import com.example.demo_scoala.services.StudentsService;
 import org.springframework.web.bind.annotation.*;
@@ -19,20 +20,36 @@ public class RestStudentsController {
 
     @GetMapping("/show")
     public List<Student> showStudentByClass(@RequestParam String classCode) {
-        return studentsService.getStudentsByClass(classCode);
+        try {
+            return studentsService.getStudentsByClassCode(classCode);
+        } catch (NoFoundException e) {
+            return null;
+        }
     }
     @PostMapping("/add")
-    public Student addStudent(@RequestBody Map<String, String> body) {  //adds a student to the given class (by code) and returns that student
-        return studentsService.addStudent(body);
+    public Student addStudent(@RequestBody Map<String, String> body) {
+        try {
+            return studentsService.addStudentToClass(body);
+        } catch (NoFoundException e) {
+            return null;
+        }
     }
 
     @PatchMapping("/move")
-    public Student moveStudent(@RequestBody Map<String, String> body) {   //move a student from a class to the given new class and returns that student
-        return studentsService.moveStudent(body);
+    public Student moveStudent(@RequestBody Map<String, String> body) {
+        try {
+            return studentsService.moveStudentToOtherClass(body);
+        } catch (NoFoundException e) {
+            return null;
+        }
     }
 
     @DeleteMapping("/delete")
-    public Student deleteStudent(@RequestBody Map<String, String> body) {  //given the firstName and lastName, deletes that student and returns it
-        return studentsService.deleteStudent(body);
+    public Student deleteStudent(@RequestBody Map<String, String> body) {
+        try {
+            return studentsService.deleteStudent(body);
+        } catch (NoFoundException e) {
+            return null;
+        }
     }
 }
