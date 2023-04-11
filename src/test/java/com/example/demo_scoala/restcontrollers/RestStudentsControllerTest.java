@@ -1,5 +1,6 @@
 package com.example.demo_scoala.restcontrollers;
 
+import com.example.demo_scoala.exceptions.NoFoundException;
 import com.example.demo_scoala.models.Class;
 import com.example.demo_scoala.models.Student;
 import com.example.demo_scoala.services.StudentsService;
@@ -12,18 +13,15 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.*;
 
 import static org.hamcrest.Matchers.hasSize;
-import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.jsonPath;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
@@ -49,7 +47,7 @@ class RestStudentsControllerTest {
         Class clasa = new Class("Mate-Info", 7, classCode);
         Student student = new Student("Andrei", "Ionut",13, clasa);
 
-        when(studentsServiceMock.getStudentsByClass(classCode)).thenReturn(List.of(student));
+        when(studentsServiceMock.getStudentsByClassCode(classCode)).thenReturn(List.of(student));
 
         mockMvc.perform(get("/rest/students/show?classCode=" + classCode))
                 .andExpect(status().isOk())
@@ -68,15 +66,15 @@ class RestStudentsControllerTest {
         Class clasa = new Class("Filologie", 7, classCode);
         Student student = new Student("Andreea", "Ioana", 14, clasa);
 
-        Map<String, String> body = new HashMap<>();
-        body.put("firstName", "Andreea");
-        body.put("lastName", "Ioana");
-        body.put("age", "15");
-        body.put("classCode", classCode);
+        Map<String, String> requestBody = new HashMap<>();
+        requestBody.put("firstName", "Andreea");
+        requestBody.put("lastName", "Ioana");
+        requestBody.put("age", "15");
+        requestBody.put("classCode", classCode);
 
-        when(studentsServiceMock.addStudent(body)).thenReturn(student);
+        when(studentsServiceMock.addStudentToClass(requestBody)).thenReturn(student);
 
-        mockMvc.perform(post("/rest/students/add").contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(body)))
+        mockMvc.perform(post("/rest/students/add").contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(requestBody)))
                 .andExpect(MockMvcResultMatchers.jsonPath("firstName").value("Andreea"))
                 .andExpect(MockMvcResultMatchers.jsonPath("clasa.code").value(classCode));
     }
@@ -85,15 +83,15 @@ class RestStudentsControllerTest {
     void shouldNotAddStudentAndReturnNull() throws Exception{
         String classCode = "C24GV";
 
-        Map<String, String> body = new HashMap<>();
-        body.put("firstName", "Andreea");
-        body.put("lastName", "Ioana");
-        body.put("age", "15");
-        body.put("classCode", classCode);
+        Map<String, String> requestBody = new HashMap<>();
+        requestBody.put("firstName", "Andreea");
+        requestBody.put("lastName", "Ioana");
+        requestBody.put("age", "15");
+        requestBody.put("classCode", classCode);
 
-        when(studentsServiceMock.addStudent(body)).thenReturn(null);
+        when(studentsServiceMock.addStudentToClass(requestBody)).thenThrow(NoFoundException.class);
 
-        mockMvc.perform(post("/rest/students/add").contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(body)))
+        mockMvc.perform(post("/rest/students/add").contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(requestBody)))
                 .andExpect(status().isOk())
                 .andExpect(MockMvcResultMatchers.jsonPath("$").doesNotExist());
     }
@@ -101,18 +99,17 @@ class RestStudentsControllerTest {
     @Test
     void shouldMoveStudentAndReturnThatStudent() throws Exception{
         String newClassCode = "C24GV";
-        String oldClassCode = "SDGF3V";
         Class newClass = new Class("Mate-Info", 7, newClassCode);
         Student movedStudent = new Student("Ion", "Marcel", 14, newClass);
 
-        Map<String, String> body = new HashMap<>();
-        body.put("firstName", "Ion");
-        body.put("lastName", "Marcel");
-        body.put("newClassCode", newClassCode);
+        Map<String, String> requestBody = new HashMap<>();
+        requestBody.put("firstName", "Ion");
+        requestBody.put("lastName", "Marcel");
+        requestBody.put("newClassCode", newClassCode);
 
-        when(studentsServiceMock.moveStudent(body)).thenReturn(movedStudent);
+        when(studentsServiceMock.moveStudentToOtherClass(requestBody)).thenReturn(movedStudent);
 
-        mockMvc.perform(patch("/rest/students/move").contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(body)))
+        mockMvc.perform(patch("/rest/students/move").contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(requestBody)))
                 .andExpect(status().isOk())
                 .andExpect(MockMvcResultMatchers.jsonPath("firstName").value("Ion"))
                 .andExpect(MockMvcResultMatchers.jsonPath("clasa.code").value(newClassCode));
@@ -122,14 +119,14 @@ class RestStudentsControllerTest {
     void shouldNotMoveStudentAndReturnNull() throws Exception{
         String newClassCode = "C24GV";
 
-        Map<String, String> body = new HashMap<>();
-        body.put("firstName", "Ion");
-        body.put("lastName", "Marcel");
-        body.put("newClassCode", newClassCode);
+        Map<String, String> requestBody = new HashMap<>();
+        requestBody.put("firstName", "Ion");
+        requestBody.put("lastName", "Marcel");
+        requestBody.put("newClassCode", newClassCode);
 
-        when(studentsServiceMock.moveStudent(body)).thenReturn(null);
+        when(studentsServiceMock.moveStudentToOtherClass(requestBody)).thenThrow(NoFoundException.class);
 
-        mockMvc.perform(patch("/rest/students/move").contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(body)))
+        mockMvc.perform(patch("/rest/students/move").contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(requestBody)))
                 .andExpect(status().isOk())
                 .andExpect(MockMvcResultMatchers.jsonPath("$").doesNotExist());
     }
@@ -140,12 +137,12 @@ class RestStudentsControllerTest {
         Class clasa = new Class("Filologie", 7, classCode);
         Student student = new Student("Andreea", "Ioana", 13, clasa);
 
-        Map<String, String> body = new HashMap<>();
-        body.put("firstName", "Andreea");
-        body.put("lastName", "Ioana");
+        Map<String, String> requestBody = new HashMap<>();
+        requestBody.put("firstName", "Andreea");
+        requestBody.put("lastName", "Ioana");
 
-        when(studentsServiceMock.deleteStudent(body)).thenReturn(student);
-        mockMvc.perform(delete("/rest/students/delete").contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(body)))
+        when(studentsServiceMock.deleteStudent(requestBody)).thenReturn(student);
+        mockMvc.perform(delete("/rest/students/delete").contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(requestBody)))
                 .andExpect(status().isOk())
                 .andExpect(MockMvcResultMatchers.jsonPath("firstName").value("Andreea"))
                 .andExpect(MockMvcResultMatchers.jsonPath("lastName").value("Ioana"))
@@ -154,13 +151,13 @@ class RestStudentsControllerTest {
 
    @Test
     void shouldNotDeleteStudentAndReturnNUll() throws Exception{;
-        Map<String, String> body = new HashMap<>();
-        body.put("firstName", "Ion");
-        body.put("lastName", "Marcel");
+        Map<String, String> requestBody = new HashMap<>();
+        requestBody.put("firstName", "Ion");
+        requestBody.put("lastName", "Marcel");
 
-        when(studentsServiceMock.deleteStudent(body)).thenReturn(null);
+        when(studentsServiceMock.deleteStudent(requestBody)).thenThrow(NoFoundException.class);
 
-        mockMvc.perform(delete("/rest/students/delete").contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(body)))
+        mockMvc.perform(delete("/rest/students/delete").contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(requestBody)))
                 .andExpect(status().isOk())
                 .andExpect(MockMvcResultMatchers.jsonPath("$").doesNotExist());
     }
